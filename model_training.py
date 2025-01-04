@@ -1,16 +1,14 @@
-# model_training.py
-
 import pandas as pd
 import numpy as np
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 import random
 
-# Установка начального сида для генераторов случайных чисел
+# Set initial seed for random number generators
 SEED = 42
 np.random.seed(SEED)
 random.seed(SEED)
 
-# Импортируем функции из feature_selection.py
+# Import functions from feature_selection.py
 from feature_selection import demo_llm_feature_selection
 
 def tune_xgb(X_train, y_train):
@@ -35,20 +33,20 @@ def tune_xgb(X_train, y_train):
         param_grid=param_grid,
         cv=5,
         scoring='r2',
-        n_jobs=-1,   # при желании можно поставить 1 для полной детерминированности
+        n_jobs=-1,   # Set to 1 if full determinism is required
         verbose=1
     )
     grid_search.fit(X_train, y_train)
 
-    print("Лучшие параметры для XGBRegressor:", grid_search.best_params_)
+    print("Best parameters for XGBRegressor:", grid_search.best_params_)
     best_xgb = grid_search.best_estimator_
 
     return best_xgb
 
 def train_and_evaluate_models(X_train, X_test, y_train, y_test):
     """
-    Обучает и оценивает 30 различных регрессионных моделей.
-    Возвращает DataFrame с результатами и лучшие модели по R² и RMSE.
+    Trains and evaluates 30 different regression models.
+    Returns a DataFrame with results and the best models by R² and RMSE.
     """
     from sklearn.linear_model import (
         Ridge, Lasso, ElasticNet, BayesianRidge, ARDRegression, HuberRegressor, 
@@ -67,19 +65,19 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
         from xgboost import XGBRegressor
     except ImportError:
         XGBRegressor = None
-        print("Библиотека xgboost не установлена. XGBoost модели не будут доступны.")
+        print("The xgboost library is not installed. XGBoost models will not be available.")
 
     try:
         from lightgbm import LGBMRegressor
     except ImportError:
         LGBMRegressor = None
-        print("Библиотека lightgbm не установлена. LightGBM модели не будут доступны.")
+        print("The lightgbm library is not installed. LightGBM models will not be available.")
 
     try:
         from catboost import CatBoostRegressor
     except ImportError:
         CatBoostRegressor = None
-        print("Библиотека catboost не установлена. CatBoost модели не будут доступны.")
+        print("The catboost library is not installed. CatBoost models will not be available.")
 
     models = [
         ('LinearRegression', LinearRegression()),
@@ -109,7 +107,7 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
         ('MLPRegressor', MLPRegressor(random_state=SEED)),
     ]
 
-    # Дополнительно добавим различные настройки некоторых моделей для увеличения числа до 30
+    # Additionally, include various configurations of some models to reach 30
     additional_models = [
         ('Ridge_alpha_1.0', Ridge(alpha=1.0, random_state=SEED)),
         ('Ridge_alpha_10.0', Ridge(alpha=10.0, random_state=SEED)),
@@ -137,7 +135,7 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
         ('MLPRegressor_hidden_layer_sizes_50', MLPRegressor(hidden_layer_sizes=(50,), random_state=SEED)),
     ]
 
-    # Добавляем XGBoost, LightGBM и CatBoost, если они установлены
+    # Add XGBoost, LightGBM, and CatBoost if available
     if XGBRegressor:
         additional_models.extend([
             ('XGBRegressor_default', XGBRegressor(random_state=SEED)),
@@ -161,7 +159,7 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
 
     results = []
     for name, model in models:
-        print(f"\nОбучение модели: {name}")
+        print(f"\nTraining model: {name}")
         try:
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
@@ -174,59 +172,58 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test):
                 'MAE': mae,
                 'RMSE': rmse
             })
-            print(f"Модель {name} обучена. R²: {r2:.4f}, MAE: {mae:.4f}, RMSE: {rmse:.4f}")
+            print(f"Model {name} trained. R²: {r2:.4f}, MAE: {mae:.4f}, RMSE: {rmse:.4f}")
         except Exception as e:
-            print(f"Ошибка при обучении модели {name}: {e}")
+            print(f"Error training model {name}: {e}")
 
-    # Создаём DataFrame с результатами
+    # Create a DataFrame with results
     results_df = pd.DataFrame(results)
 
-    # Сортируем модели по R² (от большего к меньшему)
+    # Sort models by R² (descending)
     best_model_r2 = results_df.sort_values(by='R2', ascending=False).iloc[0]
-    # Сортируем модели по RMSE (от меньшего к большему)
+    # Sort models by RMSE (ascending)
     best_model_rmse = results_df.sort_values(by='RMSE').iloc[0]
 
-    print("\n=== Лучшие модели ===")
-    print("\nМодель с наивысшим R²:")
+    print("\n=== Best Models ===")
+    print("\nModel with the highest R²:")
     print(best_model_r2)
 
-    print("\nМодель с наименьшим RMSE:")
+    print("\nModel with the lowest RMSE:")
     print(best_model_rmse)
 
-    # Возвращаем DataFrame с результатами и лучшие модели
+    # Return DataFrame with results and best models
     return results_df, best_model_r2, best_model_rmse
 
-
 if __name__ == "__main__":
-    # Путь к вашему CSV-файлу
-    csv_path = "data/input/task.csv"       # Укажите свой CSV
-    target_column = "Delivery_Time_min"    # Замените на ваш таргет
-    MODEL_NAME = "llama3.2"                # Одна из моделей, которые показывает `ollama list`
+    # Path to your CSV file
+    csv_path = "data/input/task.csv"       # Specify your CSV file
+    target_column = "Delivery_Time_min"    # Replace with your target column
+    MODEL_NAME = "llama3.2"                # One of the models listed by `ollama list`
 
-    # Выполняем выбор признаков и получаем разделённые данные
+    # Perform feature selection and obtain split data
     X_train, X_test, y_train, y_test, final_cols = demo_llm_feature_selection(
         csv_file=csv_path,
         target_col=target_column,
         model_name=MODEL_NAME
     )
 
-    # ШАГ 1: ОДНОКРАТНО вызываем нашу функцию обучения и сохраняем результат
+    # STEP 1: Perform one-time training and save results
     results_df, best_model_r2, best_model_rmse = train_and_evaluate_models(X_train, X_test, y_train, y_test)
 
-    # ШАГ 2: Если в списке моделей есть XGBRegressor, то можем дополнительно запустить точный GridSearchCV
+    # STEP 2: If XGBRegressor is in the list, perform precise GridSearchCV tuning
     if 'XGBRegressor_default' in results_df['Model'].unique():
         best_xgb = tune_xgb(X_train, y_train)
         y_pred = best_xgb.predict(X_test)
         r2 = r2_score(y_test, y_pred)
         mae = mean_absolute_error(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        print(f"\nОптимизированный XGBRegressor R²: {r2:.4f}, MAE: {mae:.4f}, RMSE: {rmse:.4f}")
+        print(f"\nOptimized XGBRegressor R²: {r2:.4f}, MAE: {mae:.4f}, RMSE: {rmse:.4f}")
 
-    # Сохраняем результаты в CSV
+    # Save results to CSV
     results_df.to_csv('model_results.csv', index=False)
-    print("\nРезультаты моделей сохранены в 'model_results.csv'.")
+    print("\nModel results saved to 'model_results.csv'.")
 
-    # Сохраняем лучшие модели
+    # Save best models
     best_model_r2.to_frame().T.to_csv('best_model_r2.csv', index=False)
     best_model_rmse.to_frame().T.to_csv('best_model_rmse.csv', index=False)
-    print("Лучшие модели сохранены в 'best_model_r2.csv' и 'best_model_rmse.csv'.")
+    print("Best models saved to 'best_model_r2.csv' and 'best_model_rmse.csv'.")
